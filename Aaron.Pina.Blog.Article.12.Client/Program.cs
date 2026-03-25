@@ -13,6 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton<TokenRepository>();
 builder.Services.AddHostedService<TokenRefresherService>();
 builder.Services.AddTransient(Configuration.TokenServer.TokenRefreshHandlerFactory);
+builder.Services.Configure<Credentials>(builder.Configuration.GetSection(nameof(Credentials)));
 
 foreach (var role in Roles.ValidRoles)
 foreach (var (audience, port) in Api.Targets)
