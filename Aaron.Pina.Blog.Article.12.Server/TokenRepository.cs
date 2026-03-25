@@ -14,9 +14,9 @@ public class TokenRepository(ServerDbContext dbContext)
         dbContext.SaveChanges();
     }
 
-    public TokenEntity? TryGetTokenByUserIdAndAudience(Guid userId, string audience) =>
-        dbContext.Tokens.FirstOrDefault(t => t.UserId == userId && t.Audience == audience);
-
     public TokenEntity? TryGetTokenByRefreshToken(string refreshToken) =>
         dbContext.Tokens.FirstOrDefault(t => t.RefreshToken == refreshToken);
+
+    public TokenEntity? TryGetTokenByClientIdAndAudience(string clientId, string audience) =>
+        dbContext.Tokens.FirstOrDefault(t => t.ClientId == clientId && t.Audience == audience);
 }

@@ -5,6 +5,7 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <RootNamespace>Aaron.Pina.Blog.Article._12.Other</RootNamespace>
+        <UserSecretsId>2f851202-95a2-4208-8d28-9db2555b9c12</UserSecretsId>
     </PropertyGroup>
 
     <ItemGroup>

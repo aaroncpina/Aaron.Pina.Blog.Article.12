@@ -5,34 +5,34 @@ using Microsoft.Extensions.Options;
 namespace Aaron.Pina.Blog.Article._12.Server;
 
 public class TokenService(
-    UserRepository userRepo,
     TokenRepository tokenRepo,
     JwksKeyManager keyManager,
-    IOptionsSnapshot<TokenConfig> config)
+    IOptionsSnapshot<TokenConfig> config,
+    CredentialsValidator credentialsValidator)
 {
-    public async Task<TokenResult> HandleAccessTokenRequestAsync(Guid? userId, string? scope)
+    public async Task<TokenResult> HandleAccessTokenRequestAsync(string? clientId, string? clientSecret, string? scope)
     {
-        if (userId is null) return TokenResult.Fail("User id is required");
+        if (string.IsNullOrEmpty(clientId)) return TokenResult.Fail("ClientId is required");
+        if (string.IsNullOrEmpty(clientSecret)) return TokenResult.Fail("Client Secret is required");
+        if (!credentialsValidator.TryValidateCredentials(clientId, clientSecret)) return TokenResult.Fail("Invalid credentials");
         if (string.IsNullOrEmpty(scope)) return TokenResult.Fail("Scope is required");
-        if (!AudienceExtractor.TryExtractAudience(scope, out var audience)) return TokenResult.Fail("Invalid scope");
+        if (!ScopeParser.TryExtractValues(scope, out var audience, out var scopes)) return TokenResult.Fail("Invalid scope");
         if (!Api.IsValidTarget(audience)) return TokenResult.Fail("Invalid audience");
-        var token = tokenRepo.TryGetTokenByUserIdAndAudience(userId.Value, audience);
+        var token = tokenRepo.TryGetTokenByClientIdAndAudience(clientId, audience);
         if (token is not null) return TokenResult.Fail("An active token exists for this audience");
-        var user = userRepo.TryGetUserById(userId.Value);
-        if (user is null) return TokenResult.Fail("Invalid user id");
         var jti = Guid.NewGuid();
         var now = DateTime.UtcNow;
         var signingKey = await keyManager.GetOrCreateSigningKeyAsync();
         var refreshToken = TokenGenerator.GenerateRefreshToken();
         var accessToken = TokenGenerator.GenerateToken(
-            signingKey, jti, userId.Value, user.Role, audience, scope, now, config.Value.AccessTokenLifetime);
+            signingKey, jti, clientId, audience, scopes, now, config.Value.AccessTokenLifetime);
         var response = new TokenResponse(
             jti, accessToken, refreshToken, config.Value.AccessTokenLifetime.TotalMinutes);
         tokenRepo.SaveToken(new TokenEntity
         {
             RefreshTokenExpiresAt = now.Add(config.Value.RefreshTokenLifetime),
             RefreshToken = refreshToken,
-            UserId = userId.Value,
+            ClientId = clientId,
             Audience = audience,
             CreatedAt = now,
             Scope = scope
@@ -46,14 +46,13 @@ public class TokenService(
         var token = tokenRepo.TryGetTokenByRefreshToken(refreshToken);
         if (token is null) return TokenResult.Fail("Invalid refresh token");
         if (token.RefreshTokenExpiresAt < DateTime.UtcNow) return TokenResult.Fail("Refresh token has expired");
-        var user = userRepo.TryGetUserById(token.UserId);
-        if (user is null) return TokenResult.Fail("Invalid user id");
         var jti = Guid.NewGuid();
         var now = DateTime.UtcNow;
         var signingKey = await keyManager.GetOrCreateSigningKeyAsync();
         var newRefreshToken = TokenGenerator.GenerateRefreshToken();
+        var scopes = ScopeParser.ExtractScopes(token.Scope);
         var accessToken = TokenGenerator.GenerateToken(
-            signingKey, jti, token.UserId, user.Role, token.Audience, token.Scope, now, config.Value.AccessTokenLifetime);
+            signingKey, jti, token.ClientId, token.Audience, scopes, now, config.Value.AccessTokenLifetime);
         var response = new TokenResponse(
             jti, accessToken, newRefreshToken, config.Value.AccessTokenLifetime.TotalMinutes);
         token.RefreshTokenExpiresAt = now.Add(config.Value.RefreshTokenLifetime);

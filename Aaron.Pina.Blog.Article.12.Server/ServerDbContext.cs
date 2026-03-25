@@ -7,6 +7,10 @@ public class ServerDbContext(DbContextOptions<ServerDbContext> options) : DbCont
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<TokenEntity>()
+                    .Property(t => t.ClientId)
+                    .HasMaxLength(128);
+
+        modelBuilder.Entity<TokenEntity>()
                     .Property(t => t.RefreshToken)
                     .HasMaxLength(512);
 
@@ -19,14 +23,9 @@ public class ServerDbContext(DbContextOptions<ServerDbContext> options) : DbCont
                     .HasMaxLength(128);
 
         modelBuilder.Entity<TokenEntity>()
-                    .HasIndex(t => new { t.UserId, t.Audience })
+                    .HasIndex(t => new { t.ClientId, t.Audience })
                     .IsUnique();
-
-        modelBuilder.Entity<UserEntity>()
-                    .Property(t => t.Role)
-                    .HasMaxLength(512);
     }
     
     public DbSet<TokenEntity> Tokens => Set<TokenEntity>();
-    public DbSet<UserEntity>  Users =>  Set<UserEntity>();
 }

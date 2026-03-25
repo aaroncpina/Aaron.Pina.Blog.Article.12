@@ -2,13 +2,14 @@ using static System.StringSplitOptions;
 
 namespace Aaron.Pina.Blog.Article._12.Server;
 
-public static class AudienceExtractor
+public static class ScopeParser
 {
-    public static bool TryExtractAudience(string scope, out string audience)
+    public static bool TryExtractValues(string scope, out string audience, out string[] scopes)
     {
+        scopes = [];
         audience = string.Empty;
         if (string.IsNullOrEmpty(scope)) return false;
-        var scopes = scope.Split(' ', RemoveEmptyEntries | TrimEntries);
+        scopes = scope.Split(' ', RemoveEmptyEntries | TrimEntries);
         var audiences = scopes.Select(s => s.Split('.', 2))
                               .Where(p => p.Length == 2)
                               .Select(p => p.First())
@@ -18,4 +19,7 @@ public static class AudienceExtractor
         audience = audiences.Single();
         return true;
     }
+    
+    public static string[] ExtractScopes(string scope) =>
+        scope.Split(' ', RemoveEmptyEntries | TrimEntries);
 }

@@ -3,7 +3,7 @@ namespace Aaron.Pina.Blog.Article._12.Server;
 public class TokenEntity
 {
     public Guid     Id                    { get; init; } = Guid.NewGuid();
-    public Guid     UserId                { get; init; }
+    public string   ClientId              { get; init; } = string.Empty;   
     public string   Audience              { get; init; } = string.Empty;
     public string   Scope                 { get; init; } = string.Empty;
     public DateTime CreatedAt             { get; init; }

@@ -13,7 +13,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(Configuration.JwtBearer.Options);
 builder.Services.AddAuthorization(Configuration.Authorisation.Options);
 builder.Services.AddScoped<TokenRepository>();
-builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<JwksKeyManager>();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddDbContext<ServerDbContext>(Configuration.DbContext.Options);
@@ -46,30 +45,18 @@ app.MapGet("/.well-known/jwks.json", async (JwksKeyManager keyManager) =>
    .WithName("JWKS")
    .AllowAnonymous();
 
-app.MapGet("/{role}/register", (UserRepository repo, string role) =>
-    {
-        if (!Roles.ValidRoles.Contains(role)) return Results.BadRequest("Invalid role");
-        var user = new UserEntity
-        {
-            Id = Guid.NewGuid(),
-            Role = role
-        };
-        repo.AddUser(user);
-        return Results.Ok(user.Id);
-    })
-   .AllowAnonymous();
-
 app.MapPost("/token", async
-   ([FromForm(Name = "refresh_token")] string? refreshToken,
-    [FromForm(Name = "grant_type")] string grantType,
-    [FromForm(Name = "client_id")] Guid? userId,
+   ([FromForm(Name = "grant_type")] string grantType,
+    [FromForm(Name = "refresh_token")] string? refreshToken,
+    [FromForm(Name = "client_secret")] string? clientSecret,
+    [FromForm(Name = "client_id")] string? clientId,
     [FromForm(Name = "scope")] string? scope,
     TokenService tokenService) =>
     {
         if (string.IsNullOrEmpty(grantType)) return Results.BadRequest("invalid_grant");
         var result = grantType switch
         {
-            "client_credentials" => await tokenService.HandleAccessTokenRequestAsync(userId, scope),
+            "client_credentials" => await tokenService.HandleAccessTokenRequestAsync(clientId, clientSecret, scope),
             "refresh_token"      => await tokenService.HandleRefreshTokenRequestAsync(refreshToken),
             _                    => await Task.FromResult(TokenResult.Fail("invalid_grant"))
         };
