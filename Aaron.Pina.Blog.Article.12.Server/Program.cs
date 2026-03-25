@@ -12,6 +12,7 @@ builder.Services.AddStackExchangeRedisCache(Configuration.RedisCache.Options);
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(Configuration.JwtBearer.Options);
 builder.Services.AddAuthorization(Configuration.Authorisation.Options);
+builder.Services.AddTransient<CredentialsValidator>();
 builder.Services.AddScoped<TokenRepository>();
 builder.Services.AddScoped<JwksKeyManager>();
 builder.Services.AddScoped<TokenService>();
