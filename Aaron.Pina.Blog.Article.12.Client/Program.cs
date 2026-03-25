@@ -4,6 +4,7 @@ using static System.Net.Mime.MediaTypeNames;
 using Aaron.Pina.Blog.Article._12.Client;
 using Aaron.Pina.Blog.Article._12.Shared;
 using System.IdentityModel.Tokens.Jwt;
+using Microsoft.Extensions.Options;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text;
@@ -25,34 +26,35 @@ foreach (var (audience, port) in Api.Targets)
 
 var app = builder.Build();
 
-app.MapGet("/{role}/login", async (IHttpClientFactory factory, TokenRepository repository, string role) =>
-{
-    if (!Roles.ValidRoles.Contains(role)) return Results.BadRequest("Invalid role");
-    using var client = factory.CreateClient($"{role}-server-api");
-    using var registerResponse = await client.GetAsync($"{role}/register");
-    if (!registerResponse.IsSuccessStatusCode) return Results.BadRequest("Unable to register");
-    var userId = await registerResponse.Content.ReadFromJsonAsync<Guid>();
-    if (userId == Guid.Empty) return Results.BadRequest("Unable to parse user id");
-    foreach (var audience in Api.Targets.Keys)
+app.MapGet("/{role}/login", async
+   (IOptionsSnapshot<Credentials> options,
+    IHttpClientFactory factory,
+    TokenRepository repository,
+    string role) =>
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, "/token");
-        request.Content = new FormUrlEncodedContent([
-            new KeyValuePair<string, string>("grant_type", "client_credentials"),
-            new KeyValuePair<string, string>("client_id", userId.ToString()),
-            new KeyValuePair<string, string>("scope", $"{audience}.read")
-        ]);
-        using var tokenResponse = await client.SendAsync(request);
-        if (!tokenResponse.IsSuccessStatusCode) return Results.BadRequest($"Unable to get token for API '{audience}'");
-        var token = await tokenResponse.Content.ReadFromJsonAsync<TokenResponse>();
-        if (token is null) return Results.BadRequest($"Unable to parse token for API {audience}");
-        var store = repository.GetStore(role, audience);
-        store.AccessTokenExpiresAt = DateTime.UtcNow.AddMinutes(token.AccessTokenExpiresIn);
-        store.RefreshToken = token.RefreshToken;
-        store.AccessToken = token.AccessToken;
-        store.Audience = audience;
-    }
-    return Results.Ok("Logged in");
-});
+        if (!Roles.ValidRoles.Contains(role)) return Results.BadRequest("Invalid role");
+        using var client = factory.CreateClient($"{role}-server-api");
+        foreach (var audience in Api.Targets.Keys)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, "/token");
+            request.Content = new FormUrlEncodedContent([
+                new KeyValuePair<string, string>("client_secret", options.Value.ClientSecret),
+                new KeyValuePair<string, string>("client_id", options.Value.ClientId),
+                new KeyValuePair<string, string>("grant_type", "client_credentials"),
+                new KeyValuePair<string, string>("scope", $"{audience}.{role}")
+            ]);
+            using var tokenResponse = await client.SendAsync(request);
+            if (!tokenResponse.IsSuccessStatusCode) return Results.BadRequest($"Unable to get token for API '{audience}'");
+            var token = await tokenResponse.Content.ReadFromJsonAsync<TokenResponse>();
+            if (token is null) return Results.BadRequest($"Unable to parse token for API {audience}");
+            var store = repository.GetStore(role, audience);
+            store.AccessTokenExpiresAt = DateTime.UtcNow.AddMinutes(token.AccessTokenExpiresIn);
+            store.RefreshToken = token.RefreshToken;
+            store.AccessToken = token.AccessToken;
+            store.Audience = audience;
+        }
+        return Results.Ok("Logged in");
+    });
 
 app.MapGet("/{role}/info", async (IHttpClientFactory factory, TokenRepository repository, string role) =>
 {
