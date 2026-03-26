@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Aaron.Pina.Blog.Article._12.Shared.Responses;
+using Aaron.Pina.Blog.Article._12.Shared;
 using Aaron.Pina.Blog.Article._12.Other;
 using System.Security.Claims;
 
@@ -16,12 +17,12 @@ app.UseAuthorization();
 
 app.MapGet("/user", (HttpContext context) =>
     {
-        var role = context.User.FindFirstValue("role");
-        if (role is null) return Results.Unauthorized();
-        var sub = context.User.FindFirstValue("sub");
-        var parsed = Guid.TryParse(sub, out var userId); 
-        if (!parsed) return Results.Unauthorized();
-        return Results.Ok(new UserResponse(userId, role));
+        var clientId = context.User.FindFirstValue("sub");
+        if (string.IsNullOrEmpty(clientId)) return Results.BadRequest("No client id found");
+        var scope = context.User.FindFirstValue("scope");
+        if (string.IsNullOrEmpty(scope)) return Results.BadRequest("No scope found");
+        var permissions = ScopeParser.ExtractPermissions(scope);
+        return Results.Ok(new UserResponse(clientId, string.Join(',', permissions)));
     })
    .RequireAuthorization();
 
