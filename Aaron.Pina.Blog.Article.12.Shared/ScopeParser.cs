@@ -23,11 +23,10 @@ public static class ScopeParser
     public static string[] ExtractScopes(string scope) =>
         scope.Split(' ', RemoveEmptyEntries | TrimEntries);
     
-    public static string[] ExtractPermissions(string scope) =>
-        scope.Split(' ', RemoveEmptyEntries | TrimEntries)
-             .Select(s => s.Split('.', 2))
-             .Where(p => p.Length == 2)
-             .Select(p => p.Last())
-             .Distinct(StringComparer.Ordinal)
-             .ToArray();
+    public static string[] ExtractPermissions(IEnumerable<string> scopes) =>
+        scopes.Select(s => s.Split('.', 2))
+              .Where(p => p.Length == 2)
+              .Select(p => p.Last())
+              .Distinct(StringComparer.Ordinal)
+              .ToArray();
 }
