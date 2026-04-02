@@ -9,7 +9,7 @@ public static class ScopeParser
         scopes = [];
         audience = string.Empty;
         if (string.IsNullOrEmpty(scope)) return false;
-        scopes = scope.Split(' ', RemoveEmptyEntries | TrimEntries);
+        scopes = ExtractScopes(scope);
         var audiences = scopes.Select(s => s.Split('.', 2))
                               .Where(p => p.Length == 2)
                               .Select(p => p.First())
