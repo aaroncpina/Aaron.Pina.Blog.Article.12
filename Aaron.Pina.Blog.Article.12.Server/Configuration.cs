@@ -50,7 +50,7 @@ public static class Configuration
         {
             options.AddPolicy("admin", policy =>
                 policy.RequireAuthenticatedUser()
-                      .RequireClaim("scope", "auth.admin"));
+                      .RequireClaim("scope", "server.admin"));
         }
     }
     
