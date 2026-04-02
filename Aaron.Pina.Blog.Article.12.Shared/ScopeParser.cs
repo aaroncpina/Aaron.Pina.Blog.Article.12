@@ -10,15 +10,18 @@ public static class ScopeParser
         audience = string.Empty;
         if (string.IsNullOrEmpty(scope)) return false;
         scopes = ExtractScopes(scope);
-        var audiences = scopes.Select(s => s.Split('.', 2))
-                              .Where(p => p.Length == 2)
-                              .Select(p => p.First())
-                              .Distinct(StringComparer.Ordinal)
-                              .ToList();
-        if (audiences.Count != 1) return false;
+        var audiences = ExtractAudiences(scopes);
+        if (audiences.Length != 1) return false;
         audience = audiences.Single();
         return true;
     }
+
+    public static string[] ExtractAudiences(IEnumerable<string> scopes) =>
+        scopes.Select(s => s.Split('.', 2))
+              .Where(p => p.Length == 2)
+              .Select(p => p.First())
+              .Distinct(StringComparer.Ordinal)
+              .ToArray();
     
     public static string[] ExtractScopes(string scope) =>
         scope.Split(' ', RemoveEmptyEntries | TrimEntries);
